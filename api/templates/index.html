@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    {% include 'meta.html' %}
+
+</head>
+<body>
+    
+    {% include 'header.html' %}
+
+    <br>
+    <h2> - Tools - </h2>
+    <br>
+    <table>
+        <thead>
+            <tr>
+                <th>Tool Name</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="/encode">Morse encoder</a></td>
+                <td>Convert text to CW/Morse code.</td>
+            </tr>
+            <tr>
+                <td><a href="/decode">Morse decoder</a></td>
+                <td>Convert CW/Morse code to text.</td>
+            </tr>
+            <tr>
+                <td><a href="/beacon">beacon generator</a></td>
+                <td>VHF/UHF/HF Becaon creator in with voice + cw options.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% include 'footer.html' %}
+
+</body>
+</html>

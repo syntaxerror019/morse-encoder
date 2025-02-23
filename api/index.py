@@ -1,11 +1,21 @@
-from flask import Flask
+from flask import Flask, render_template
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return 'Hello, World!'
+    return render_template('index.html')
 
-@app.route('/about')
-def about():
-    return 'About'
+@app.route('/encode')
+def encode():
+    return render_template('encode.html')
+
+@app.route('/decode')
+def decode():
+    return render_template('decode.html')
+
+@app.route('/beacon')
+def beacon():
+    return render_template('beacon.html')
+
+app.run(host='0.0.0.0', port=8080, debug=True)

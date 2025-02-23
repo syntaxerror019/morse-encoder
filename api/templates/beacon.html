@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    {% include 'meta.html' %}
+
+</head>
+<body>
+    
+    {% include 'header.html' %}
+
+    <h2>HAM Radio Beacon Generator</h2>
+
+    <p>Create a <a href="https://en.wikipedia.org/wiki/Amateur_radio_propagation_beacon">beacon</a> for propogation inspection, identifying transmission characteristics, transmission range, and more. This tool helps to emit the information required to keep your beacon legal and informative.</p>
+    <b class="small">Please note that transmissions on HAM bands made without a license is illegal and does have consequences.</b>
+
+    <br><br><br><br>
+
+    <h3>Beacon Configuration</h3>
+
+    <label for="callsign">Your Callsign: </label>
+    <input type="text" id="callsign" placeholder="Callsign">
+
+    <br>
+
+    <label for="grid">Your Grid Locator: </label>
+    <input type="text" id="grid" placeholder="Grid Locator"><button onclick="precise_location()">Use Precise Location</button>
+
+    <br>
+
+    <label for="city">City: </label>
+    <input type="text" id="city" placeholder="Boston">
+    
+    <br>
+
+    <label for="region">Region Name: </label>
+    <input type="text" id="region" placeholder="Massachusetts">
+    
+    <br>
+
+    <label for="frequency">Frequency (MHz) (optional): </label>
+    <input type="number" id="frequency" placeholder="Frequency (MHz)" step="any">
+    
+    <br>
+
+    <label for="power">Power (W) (optional): </label>
+    <input type="number" id="power" placeholder="Power (W)" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+
+    <br>
+
+    <label for="email">Contact (phone/email/etc.) (optional): </label>
+    <input type="text" id="email" placeholder="kc1vtj@example.com">
+
+    <br>
+
+    <label for="">Beacon ID mode:</label>
+    <input type="radio" id="cw" name="mode" value="cw" checked>
+    <label for="cw">CW</label>
+    <input type="radio" id="voice" name="mode" value="voice">
+    <label for="voice">Voice</label>
+
+    <br><br><br>
+
+    <button onclick="generate()">Generate Beacon</button>
+
+    <br><br><br><br>
+    
+    <textarea id="output" placeholder="Beacon output . . . "></textarea>
+
+    <br><br><br><br>
+
+    <div id="cw-controls" class="hidden controls">
+        <div class="row">
+            <button onclick="cw()">Play audio.</button>
+            <button onclick="stop()">Stop.</button>
+        </div>
+    </div>
+
+    <div id="voice-controls" class="hidden controls">
+        <div class="row">
+            <label for="voiceSelect">Voice: </label>
+            <select id="voiceSelect"></select>
+        </div>
+    
+        <div class="row">
+            <label for="rate">Rate: </label>
+            <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
+            <span id="rateValue">1</span>
+        </div>
+    
+        <div class="row">
+            <label for="pitch">Pitch: </label>
+            <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1">
+            <span id="pitchValue">1</span>
+        </div>
+    
+        <div class="row">
+            <input type="checkbox" id="repeat" unchecked>
+            <label for="repeat">Repeat Audio</label>
+        </div>
+    
+        <div class="row" id="repeatOptions">
+            <input type="number" id="silence" placeholder="silence" value="1000" min="1" style="width: 70px;">
+            silence between repeats (ms)
+        </div>
+    
+        <br>
+    
+        <div class="row">
+            <button onclick="voice()">Play audio.</button>
+            <button onclick="stop()">Stop.</button>
+        </div>
+    </div>
+
+    {% include 'footer.html' %}
+
+</body>
+
+<script>
+
+    var city;
+    var regionName;
+
+    function populateVoices() {
+        let voices = speechSynthesis.getVoices();
+        let voiceSelect = document.getElementById("voiceSelect");
+        voiceSelect.innerHTML = "";
+        voices.forEach((voice, index) => {
+            let option = document.createElement("option");
+            option.value = index;
+            option.textContent = `${voice.name} (${voice.lang})`;
+            voiceSelect.appendChild(option);
+        });
+    }
+
+    populateVoices();
+
+    speechSynthesis.onvoiceschanged = populateVoices;
+
+    document.getElementById("rate").addEventListener("input", function () {
+        document.getElementById("rateValue").textContent = this.value;
+    });
+
+    document.getElementById("pitch").addEventListener("input", function () {
+        document.getElementById("pitchValue").textContent = this.value;
+    });
+
+    function generate() {
+        let callsign = document.getElementById("callsign").value;
+        let grid = document.getElementById("grid").value;
+        let frequency = document.getElementById("frequency").value;
+        let power = document.getElementById("power").value;
+        let city = document.getElementById("city").value;
+        let regionName = document.getElementById("region").value;
+        let mode = document.querySelector('input[name="mode"]:checked').value;
+        let email = document.getElementById("email").value;
+
+        if (mode === "cw") {
+            
+            if (!callsign || !grid) {
+                alert("Please fill out callsign, grid, city, and region.");
+                return;
+            }
+
+            let beacon = `VVV DE ${callsign}/B ${grid}`
+            if (frequency) beacon+=` ${frequency} MHz`
+            if (power) beacon+=` ${power}W`
+            beacon+=` ${new Date().toISOString()}`;
+
+            document.getElementById("output").value = beacon;
+            document.getElementById("cw-controls").classList.remove("hidden");
+            document.getElementById("voice-controls").classList.add("hidden");
+
+        } else if (mode === "voice") {
+            if (!callsign || !grid || !city || !regionName) {
+                alert("Please fill out callsign, grid, city, and region.");
+                return;
+            }
+            let beacon = `This is ${callsign} Beacon, located in ${city}, ${regionName}.`
+            if (frequency) beacon+=` Operating on ${frequency} Megahertz`
+            if (power) beacon+=` and Running ${power} watts.`
+            if (email) beacon+=` Reports welcome at ${email}.`
+            beacon+=` ${new Date().toISOString()}`;
+
+            document.getElementById("output").value = beacon;
+            document.getElementById("cw-controls").classList.add("hidden");
+            document.getElementById("voice-controls").classList.remove("hidden");
+        }
+    }
+
+    function voice() {
+
+        stop(); //kill other instances
+
+        let output = document.getElementById("output").value;
+        let repeat = document.getElementById("repeat").checked;
+        let silence = document.getElementById("silence").value;
+        let rate = document.getElementById("rate").value;
+        let pitch = document.getElementById("pitch").value;
+        let selectedVoiceIndex = document.getElementById("voiceSelect").value;
+
+        let utterance = new SpeechSynthesisUtterance(output);
+        let voices = speechSynthesis.getVoices();
+        utterance.voice = voices[selectedVoiceIndex] || voices[0]; // Fallback in case no voice is selected
+        utterance.rate = parseFloat(rate);
+        utterance.pitch = parseFloat(pitch);
+
+        if (repeat) {
+            utterance.onend = function () {
+                window.repeatInterval = setTimeout(() => {
+                    console.log("Repeating audio.");
+                    speechSynthesis.speak(utterance);
+                }, silence);
+            };
+        } else {
+            utterance.onend = function () {
+                console.log("Audio ended.");
+            };
+        }
+
+        speechSynthesis.speak(utterance);
+        
+    }
+
+    function cw() {
+        window.location.href = `/encode?text=${document.getElementById("output").value}`;
+    }
+
+    function stop() {
+        speechSynthesis.cancel();
+        clearTimeout(window.repeatInterval);
+        speechSynthesis.cancel();
+        clearTimeout(window.repeatInterval);
+    }
+
+    async function getIPLocation() {
+        try {
+            let response = await fetch("http://ip-api.com/json/");
+            let data = await response.json();
+            return { lat: data.lat, lon: data.lon };
+        } catch (error) {
+            console.error("IP Location fetch error:", error);
+            return null;
+        }
+    }
+
+    function getGeoLocation() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject("Geolocation not supported.");
+            } else {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => resolve({ 
+                        lat: position.coords.latitude, 
+                        lon: position.coords.longitude 
+                    }),
+                    (error) => {
+                        if (error.code === error.PERMISSION_DENIED) {
+                            alert("Location access denied by user. Using estimated IP location.");
+                        }
+                        reject(error.message);
+                    }
+                );
+            }
+        });
+    }
+
+    function latLonToMaidenhead(lat, lon) {
+        lat += 90;
+        lon += 180;
+
+        let A = Math.floor(lon / 20);
+        let B = Math.floor(lat / 10);
+        let C = Math.floor((lon % 20) / 2);
+        let D = Math.floor(lat % 10);
+
+        let lon_remainder = (lon % 2) * 12;  // 24 subdivisions in each square
+        let lat_remainder = (lat % 1) * 24;
+
+        let E = String.fromCharCode(97 + Math.floor(lon_remainder)); // 'a' + (0–23)
+        let F = String.fromCharCode(97 + Math.floor(lat_remainder)); // 'a' + (0–23)
+
+        return `${String.fromCharCode(65 + A)}${String.fromCharCode(65 + B)}${C}${D}${E}${F}`;
+    }
+
+    async function findGridLocator(location) {
+        try {
+            //let location = await getGeoLocation().catch(() => getIPLocation());
+            if (!location) {
+                console.error("Could not determine location.");
+                alert("Could not determine location. Please enter your grid locator manually.");
+                return;
+            }
+            let grid = latLonToMaidenhead(location.lat, location.lon);
+            console.log(`Grid Locator: ${grid} (Lat: ${location.lat}, Lon: ${location.lon})`);
+            document.getElementById("grid").value = grid;
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Could not determine location. Please enter your grid locator manually.\nDetails: " + error);
+        }
+    }
+
+    async function precise_location() {
+        document.getElementById("grid").value = "LOADING...";
+        findGridLocator(await getGeoLocation().catch(() => getIPLocation()));
+    }
+
+    async function load() {
+        let ip_location = await getIPLocation();
+        if (ip_location) {
+            console.log("IP Location:", ip_location);
+            findGridLocator(ip_location);
+        }
+    }
+
+    load();
+
+</script>
+
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    {% include 'meta.html' %}
+
+</head>
+<body onload="load()">
+    
+    {% include 'header.html' %}
+
+    <h2>Decode morse to text</h2>
+
+    <textarea onkeyup="update()" id="input" placeholder="CW/Morse to encode"></textarea>
+
+    <textarea id="output" placeholder="ASCII output."></textarea>
+
+    {% include 'footer.html' %}
+
+</body>
+
+<script>
+
+    function update() {
+        let input = document.getElementById('input').value;
+        let output = document.getElementById('output');
+        
+        let morse = input.split(' ');
+        let text = '';
+
+        for (let i = 0; i < morse.length; i++) {
+            let char = morseToChar(morse[i]);
+            text += char || '';
+        }
+
+        output.value = text;
+
+        localStorage.setItem('input_decode', input);
+    }
+
+    function load() {
+        document.getElementById('input').value = localStorage.getItem('input_decode') || '';
+        update();
+    }
+
+    function morseToChar(char) {
+        return {
+            '.-': 'A',
+            '-...': 'B',
+            '-.-.': 'C',
+            '-..': 'D',
+            '.': 'E',
+            '..-.': 'F',
+            '--.': 'G',
+            '....': 'H',
+            '..': 'I',
+            '.---': 'J',
+            '-.-': 'K',
+            '.-..': 'L',
+            '--': 'M',
+            '-.': 'N',
+            '---': 'O',
+            '.--.': 'P',
+            '--.-': 'Q',
+            '.-.': 'R',
+            '...': 'S',
+            '-': 'T',
+            '..-': 'U',
+            '...-': 'V',
+            '.--': 'W',
+            '-..-': 'X',
+            '-.--': 'Y',
+            '--..': 'Z',
+            '.----': '1',
+            '..---': '2',
+            '...--': '3',
+            '....-': '4',
+            '.....': '5',
+            '-....': '6',
+            '--...': '7',
+            '---..': '8',
+            '----.': '9',
+            '-----': '0',
+            '/': ' ',
+        }[char];
+    } 
+</script>
+
+</html>

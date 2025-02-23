@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    {% include 'meta.html' %}
+
+</head>
+<body onload="load()">
+    
+    {% include 'header.html' %}
+
+    <h2>Encode text to morse</h2>
+
+    <textarea onkeyup="update()" id="input" placeholder="Text to encode"></textarea>
+
+    <textarea id="output" placeholder="Morse code"></textarea>
+
+    <hr class="divider">
+
+    <h3>Audio</h3>
+
+    <div class="row">
+        <input type="number" id="wpm" placeholder="WPM" value="20" min="1" max="100">
+        WPM
+    </div>
+
+    <div class="row">
+        <input type="number" id="freq" placeholder="WPM" value="500" min="100" max="9999">
+        Tone Freq. Hz
+    </div>
+
+    <div class="row">
+        <input type="checkbox" id="repeat" unchecked>
+        <label for="repeat">Repeat Audio</label>
+    </div>
+
+    <div class="row hidden" id="repeatOptions">
+        <input type="number" id="silence" placeholder="silence" value="1000" min="1" style="width: 70px;">
+        silence between repeats (ms)
+    </div>
+
+    <br>
+
+    <div class="row">
+        <button onclick="encode()">Play morse.</button>
+        <button onclick="stop()">Stop.</button>
+    </div>
+
+    <button onclick="download()">Download audio</button>
+
+    {% include 'footer.html' %}
+
+</body>
+
+<script>
+
+    function update() {
+        let input = document.getElementById('input').value;
+        let output = document.getElementById('output');
+        let morseCode = '';
+
+        for (let char of input) {
+            if (char === ' ') {
+                morseCode += '/';
+            } else {
+                morseCode += charToMorse(char) + ' ';
+            }
+        }
+
+        output.value = morseCode;
+
+        localStorage.setItem('input', input);
+    }
+
+    function load() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const text = urlParams.get('text');
+        if (text) {
+            document.getElementById('input').value = text;
+        } else {
+            document.getElementById('input').value = localStorage.getItem('input') || '';
+        }
+        
+        update();
+
+        document.getElementById('repeat').addEventListener('change', function() {
+            let repeatOptions = document.getElementById('repeatOptions');
+            repeatOptions.classList.toggle('hidden');
+            localStorage.setItem('repeat', this.checked);
+        });
+
+        if (localStorage.getItem('repeat') === 'true') {
+            document.getElementById('repeat').checked = true;
+            document.getElementById('repeatOptions').classList.remove('hidden');
+        }
+    }
+
+    function charToMorse(char) {
+        switch (char.toLowerCase()) {
+            case 'a':
+                return '.-';
+            case 'b':
+                return '-...';
+            case 'c':
+                return '-.-.';
+            case 'd':
+                return '-..';
+            case 'e':
+                return '.';
+            case 'f':
+                return '..-.';
+            case 'g':
+                return '--.';
+            case 'h':
+                return '....';
+            case 'i':
+                return '..';
+            case 'j':
+                return '.---';
+            case 'k':
+                return '-.-';
+            case 'l':
+                return '.-..';
+            case 'm':
+                return '--';
+            case 'n':
+                return '-.';
+            case 'o':
+                return '---';
+            case 'p':
+                return '.--.';
+            case 'q':
+                return '--.-';
+            case 'r':
+                return '.-.';
+            case 's':
+                return '...';
+            case 't':
+                return '-';
+            case 'u':
+                return '..-';
+            case 'v':
+                return '...-';
+            case 'w':
+                return '.--';
+            case 'x':
+                return '-..-';
+            case 'y':
+                return '-.--';
+            case 'z':
+                return '--..';
+            case '0':
+                return '-----';
+            case '1':
+                return '.----';
+            case '2':
+                return '..---';
+            case '3':
+                return '...--';
+            case '4':
+                return '....-';
+            case '5':
+                return '.....';
+            case '6':
+                return '-....';
+            case '7':
+                return '--...';
+            case '8':
+                return '---..';
+            case '9':
+                return '----.';
+            default:
+                return '';
+        }
+    } 
+
+    function encode() {
+        let output = document.getElementById('output');
+        let wpm = document.getElementById('wpm').value;
+        let freq = document.getElementById('freq').value;
+
+        let repeat = document.getElementById('repeat').checked;
+        let silence = document.getElementById('silence').value;
+
+        if (output.value) {
+            let morseCode = output.value;
+            window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            let dotLength = 1.2 / wpm;
+            let oscillator = audioContext.createOscillator();
+            let gainNode = audioContext.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            let time = audioContext.currentTime;
+
+            for (let char of morseCode) {
+                if (char === '.') {
+                    gainNode.gain.setValueAtTime(1, time);
+                    time += dotLength;
+                    gainNode.gain.setValueAtTime(0, time);
+                    time += dotLength;
+                } else if (char === '-') {
+                    gainNode.gain.setValueAtTime(1, time);
+                    time += 3 * dotLength;
+                    gainNode.gain.setValueAtTime(0, time);
+                    time += dotLength;
+                } else if (char === ' ') {
+                    time += 3 * dotLength;
+                } else if (char === '/') {
+                    time += 7 * dotLength;
+                }
+            }
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(time);
+            
+            oscillator.onended = function() {
+                if (repeat) {
+                    window.repeatInterval = setTimeout(() => {
+                        stop();
+                        encode();
+                    }, silence);
+                }
+            };
+        }
+    }
+
+    function stop() {
+        if (window.audioContext) {
+            window.audioContext.close();
+            window.audioContext = null;
+        }
+        if (window.repeatInterval) {
+            clearInterval(window.repeatInterval);
+            window.repeatInterval = null;
+        }
+    }
+
+    function download() {
+    let output = document.getElementById('output').value;
+    let wpm = document.getElementById('wpm').value;
+    let freq = document.getElementById('freq').value;
+
+    if (output) {
+        let morseCode = output;
+        let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let dotLength = 1.2 / wpm;
+        let sampleRate = audioContext.sampleRate;
+        let bufferLength = Math.ceil(sampleRate * (dotLength * morseCode.length * 7));
+        let buffer = audioContext.createBuffer(1, bufferLength, sampleRate);
+        let data = buffer.getChannelData(0);
+
+        let time = 0;
+
+        for (let char of morseCode) {
+            if (char === '.') {
+                for (let i = 0; i < sampleRate * dotLength; i++) {
+                    data[time++] = Math.sin(2 * Math.PI * freq * i / sampleRate);
+                }
+                time += sampleRate * dotLength;
+            } else if (char === '-') {
+                for (let i = 0; i < sampleRate * dotLength * 3; i++) {
+                    data[time++] = Math.sin(2 * Math.PI * freq * i / sampleRate);
+                }
+                time += sampleRate * dotLength;
+            } else if (char === ' ') {
+                time += sampleRate * dotLength * 3;
+            } else if (char === '/') {
+                time += sampleRate * dotLength * 7;
+            }
+        }
+
+        // Create WAV file
+        let wav = audioBufferToWav(buffer);
+
+        let blob = new Blob([wav], { type: 'audio/wav' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'morse_code.wav';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+}
+
+function audioBufferToWav(buffer) {
+    let numOfChannels = buffer.numberOfChannels;
+    let sampleRate = buffer.sampleRate;
+    let format = 1; // PCM
+    let bitDepth = 16;
+    let bufferLength = buffer.length;
+    
+    let bytesPerSample = bitDepth / 8;
+    let blockAlign = numOfChannels * bytesPerSample;
+    let byteRate = sampleRate * blockAlign;
+    let dataLength = bufferLength * numOfChannels * bytesPerSample;
+    let totalLength = 44 + dataLength;
+
+    let wav = new DataView(new ArrayBuffer(totalLength));
+
+    // RIFF header
+    wav.setUint32(0, 0x52494646, false); // "RIFF"
+    wav.setUint32(4, totalLength - 8, true);
+    wav.setUint32(8, 0x57415645, false); // "WAVE"
+    wav.setUint32(12, 0x666d7420, false); // "fmt "
+    wav.setUint32(16, 16, true); // PCM format
+    wav.setUint16(20, format, true);
+    wav.setUint16(22, numOfChannels, true);
+    wav.setUint32(24, sampleRate, true);
+    wav.setUint32(28, byteRate, true);
+    wav.setUint16(32, blockAlign, true);
+    wav.setUint16(34, bitDepth, true);
+    wav.setUint32(36, 0x64617461, false); // "data"
+    wav.setUint32(40, dataLength, true);
+
+    // Write PCM samples
+    let offset = 44;
+    for (let i = 0; i < bufferLength; i++) {
+        for (let channel = 0; channel < numOfChannels; channel++) {
+            let sample = buffer.getChannelData(channel)[i];
+            let intSample = Math.max(-1, Math.min(1, sample)) * 0x7FFF; // 16-bit PCM
+            wav.setInt16(offset, intSample, true);
+            offset += 2;
+        }
+    }
+
+    return wav.buffer;
+}
+</script>
+
+</html>
