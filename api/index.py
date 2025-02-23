@@ -17,5 +17,3 @@ def decode():
 @app.route('/beacon')
 def beacon():
     return render_template('beacon.html')
-
-app.run(host='0.0.0.0', port=8080, debug=True)
